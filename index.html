@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ナレッジ検索</title>
+<form>
+  <input type="text" name="query" style="width:400px;">
+  <button type="submit">検索</button>
+</form>
+
+<hr>
+
+{% for r in results %}
+  <div style="margin-bottom:30px;">
+    <p><b>類似度:</b> {{ r.score }}</p>
+
+    <p><b>回答:</b><br>{{ r.answer }}</p>
+
+    {% if r.image %}
+      <img src="{{ url_for('static', filename=r.image) }}" width="300">
+    {% endif %}
+  </div>
+  <hr>
+{% endfor %}
+
+</body>
+</html>
