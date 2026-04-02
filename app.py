@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request, render_template
 import os
 import requests
 import base64
@@ -42,10 +42,58 @@ def ask_gemini(prompt, image_bytes=None):
         return f"Geminiエラー: {response.text}"
 
     data = response.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except:
+        return "回答生成に失敗しました"
 
 
-# ===== メインAPI =====
+# ===== プロンプト作成（RAGの核）=====
+def build_prompt(results, question):
+
+    context_text = ""
+
+    for r in results:
+
+        # 事例
+        if r["type"] == "case":
+            context_text += f"""
+【事例】
+質問: {r.get('question', '')}
+回答: {r.get('answer', '')}
+"""
+
+        # マニュアル
+        elif r["type"] == "manual":
+            context_text += f"""
+【マニュアル】
+内容: {r.get('content', '')}
+回答: {r.get('answer', '')}
+ページ: {r.get('page', '')}
+"""
+
+    prompt = f"""
+あなたは経費処理の専門家です。
+
+以下の事例・マニュアルのみを根拠に回答してください：
+
+{context_text}
+
+質問：
+{question}
+
+ルール：
+・必ず上記の情報を根拠にする
+・該当情報がなければ「該当情報なし」と答える
+・推測しない
+・簡潔に答える
+"""
+
+    return prompt
+
+
+# ===== メイン処理 =====
 @app.route("/ask", methods=["POST"])
 def ask():
 
@@ -54,44 +102,34 @@ def ask():
         file = request.files.get("image")
 
         if not question:
-            return jsonify({"error": "質問が必要"}), 400
+            return render_template("index.html", answer="質問を入力してください", results=[])
 
         image_bytes = file.read() if file else None
 
-        # ===== ① DB検索 =====
-        knowledge = search_knowledge(question)
+        # ===== ① ハイブリッド検索 =====
+        results = search_knowledge(question)
 
-        # ===== ② プロンプト作成 =====
-        prompt = f"""
-あなたは経費処理の専門家です。
+        # ===== ② プロンプト生成 =====
+        prompt = build_prompt(results, question)
 
-以下のマニュアルを参考にして回答してください：
-
-{knowledge}
-
-質問：
-{question}
-
-ルール：
-・マニュアルに基づいて答える
-・不明な場合は推測しない
-・簡潔に答える
-"""
-
-        # ===== ③ Gemini実行 =====
+        # ===== ③ AI回答 =====
         answer = ask_gemini(prompt, image_bytes)
 
-        return jsonify({
-            "answer": answer
-        })
+        # ===== ④ 画面表示 =====
+        return render_template(
+            "index.html",
+            answer=answer,
+            results=results
+        )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return render_template("index.html", answer=f"エラー: {str(e)}", results=[])
 
 
-@app.route('/')
+# ===== トップページ =====
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
