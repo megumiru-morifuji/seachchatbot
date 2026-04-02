@@ -3,22 +3,21 @@ import sqlite3
 conn = sqlite3.connect("db.sqlite")
 cur = conn.cursor()
 
-# テーブル（なければ作る）
-cur.execute("""
-CREATE TABLE IF NOT EXISTS knowledge (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    content TEXT,
-    keywords TEXT,
-    answer TEXT,
-    image_path TEXT,
-    source TEXT,
-    page INTEGER
-)
-""")
+# ===== カラム追加（なければ）=====
+try:
+    cur.execute("ALTER TABLE knowledge ADD COLUMN type TEXT")
+except:
+    pass
+
+try:
+    cur.execute("ALTER TABLE knowledge ADD COLUMN question TEXT")
+except:
+    pass
+
 
 # ===== マニュアル =====
 manual_data = [
-   {
+    {
     "content": "区分入力（対象額、税額、非課税 etc.）後、差額や警告マークがない場合の処理",
     "keywords": "OK,差額なし,警告なし",
     "answer": "OK,NGボタンを確認する。OKで、差額や警告マークがなければ、そのままSaveする。",
@@ -376,21 +375,58 @@ manual_data = [
     "page": 26,
     "section": "(9) 値引き証憑"
 }
+
 ]
 
-# ===== 登録 =====
+
+# ===== 事例 =====
+case_data = [
+    {
+        "question": "内税10％課税の他に席料内税課税というものがある。席料に10％とあるので、税区分の10％に小計と席料を足したものを入力すればよいのか？",
+        "answer": "寂寥内税課税を特殊な税額があるパターンとして認識し、差額ありとmemoに入力の上、Escalation対応をお願いいたします",
+        "image_path": "receipt_sekiryō.png",
+        "keywords": "席料,税区分"
+    }
+]
+
+
+# ===== マニュアル登録 =====
 for m in manual_data:
     cur.execute("""
-        INSERT INTO knowledge (content, keywords, answer, image_path, source, page)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO knowledge 
+        (type, question, content, keywords, answer, image_path, source, page, section)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        m["content"],
-        m["keywords"],
-        m["answer"],
-        m["image_path"],
-        m["source"],
-        m["page"]
+        "manual",
+        None,
+        m.get("content"),
+        m.get("keywords"),
+        m.get("answer"),
+        m.get("image_path") or m.get("image"),  # ←ここ重要
+        m.get("source", "manual"),
+        m.get("page"),
+        m.get("section")
     ))
+
+
+# ===== 事例登録 =====
+for c in case_data:
+    cur.execute("""
+        INSERT INTO knowledge 
+        (type, question, content, keywords, answer, image_path, source, page, section)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        "case",
+        c.get("question"),
+        None,
+        c.get("keywords"),
+        c.get("answer"),
+        c.get("image_path"),
+        "case",
+        None,
+        None
+    ))
+
 
 conn.commit()
 conn.close()
