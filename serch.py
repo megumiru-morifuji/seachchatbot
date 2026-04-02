@@ -6,11 +6,12 @@ def search_knowledge(query):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT content, answer
+        SELECT type, question, answer, page, image
         FROM knowledge
-        WHERE content LIKE ?
+        WHERE answer LIKE ?
+           OR question LIKE ?
         LIMIT 5
-    """, ('%' + query + '%',))
+    """, ('%' + query + '%', '%' + query + '%'))
 
     rows = cur.fetchall()
     conn.close()
@@ -18,9 +19,12 @@ def search_knowledge(query):
     results = []
     for row in rows:
         results.append({
-            "score": "N/A",
-            "answer": row[1],
-            "image": None
+            "type": row[0],
+            "question": row[1],
+            "answer": row[2],
+            "page": row[3],
+            "image": row[4],
+            "score": "LIKE検索"
         })
 
     return results
