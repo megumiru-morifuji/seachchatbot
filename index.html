@@ -3,25 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <title>ナレッジ検索</title>
-<form>
-  <input type="text" name="query" style="width:400px;">
+</head>
+
+<body>
+
+<form method="POST" action="/ask" enctype="multipart/form-data">
+  
+  <p>質問：</p>
+  <input type="text" name="question" style="width:400px;" required>
+
+  <p>レシート画像（任意）：</p>
+  <input type="file" name="image">
+
+  <br><br>
   <button type="submit">検索</button>
 </form>
 
 <hr>
 
-{% for r in results %}
-  <div style="margin-bottom:30px;">
-    <p><b>類似度:</b> {{ r.score }}</p>
-
-    <p><b>回答:</b><br>{{ r.answer }}</p>
-
-    {% if r.image %}
-      <img src="{{ url_for('static', filename=r.image) }}" width="300">
-    {% endif %}
-  </div>
-  <hr>
-{% endfor %}
+{% if answer %}
+  <h3>回答</h3>
+  <p>{{ answer }}</p>
+{% endif %}
 
 </body>
 </html>
